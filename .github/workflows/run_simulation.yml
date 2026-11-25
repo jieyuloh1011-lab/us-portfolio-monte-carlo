@@ -1,7 +1,7 @@
 name: Run Monte Carlo Simulation
 
 on:
-  workflow_dispatch:  # Enables the manual "Run workflow" button on GitHub
+  workflow_dispatch:
     inputs:
       initial_capital:
         description: 'Starting Portfolio Capital ($ USD)'
@@ -27,9 +27,18 @@ on:
           - '90'
           - '95'
           - '99'
+      weighting:
+        description: 'Portfolio Weighting Strategy'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - 'both'
+          - 'equal'
+          - 'market_cap'
 
 permissions:
-  contents: write  # Allows the workflow to save the updated chart/CSV back to main
+  contents: write
 
 jobs:
   simulate:
@@ -54,7 +63,8 @@ jobs:
             --capital "${{ github.event.inputs.initial_capital }}" \
             --sims "${{ github.event.inputs.num_simulations }}" \
             --days "${{ github.event.inputs.horizon_days }}" \
-            --confidence "${{ github.event.inputs.confidence_level }}"
+            --confidence "${{ github.event.inputs.confidence_level }}" \
+            --weighting "${{ github.event.inputs.weighting }}"
 
       - name: Commit and push updated chart & cache
         run: |
