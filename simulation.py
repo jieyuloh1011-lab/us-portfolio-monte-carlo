@@ -52,12 +52,21 @@ def fetch_top50_ema50_tickers():
 def load_market_data(tickers):
     try:
         print(f"Downloading {LOOKBACK_PERIOD} of historical prices from Yahoo Finance...")
-        raw_data = yf.download(tickers, period=LOOKBACK_PERIOD, auto_adjust=True, progress=False)['Close']
+        # threads=False prevents SQLite 'database is locked' errors on GitHub Actions
+        raw_data = yf.download(
+            tickers, 
+            period=LOOKBACK_PERIOD, 
+            auto_adjust=True, 
+            progress=False, 
+            threads=False
+        )['Close']
+        
         valid_data = raw_data.dropna(axis=1, thresh=int(len(raw_data) * 0.90)).ffill().dropna()
         
-        if valid_data.shape >= 10 and len(valid_data) > 100:
+        # Fixed: check valid_data.shape[1] (number of stocks) instead of valid_data.shape
+        if valid_data.shape[1] >= 10 and len(valid_data) > 100:
             valid_data.to_csv(CACHE_FILE)
-            print(f"Cached clean dataset ({valid_data.shape} stocks) to {CACHE_FILE}.")
+            print(f"Cached clean dataset ({valid_data.shape[1]} stocks, {len(valid_data)} days) to {CACHE_FILE}.")
             return valid_data
     except Exception as e:
         print(f"[Warning] yfinance download failed ({e}).")
@@ -67,6 +76,8 @@ def load_market_data(tickers):
         return pd.read_csv(CACHE_FILE, index_col=0, parse_dates=True)
     
     raise RuntimeError("Failed to fetch live data and no fallback CSV cache was found.")
+
+
 
 def run_monte_carlo(price_df, initial_capital, num_sims, horizon_days):
     tickers = price_df.columns.tolist()
