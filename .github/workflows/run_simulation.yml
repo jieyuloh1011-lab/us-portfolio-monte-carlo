@@ -27,6 +27,11 @@ on:
           - '90'
           - '95'
           - '99'
+      risk_free_rate:
+        description: 'Annual risk-free rate as decimal (0.0425 = 4.25%)'
+        required: true
+        default: '0.0425'
+        type: string
       weighting:
         description: 'Portfolio Weighting Strategy'
         required: true
@@ -51,26 +56,39 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Execute Monte Carlo Simulation
+        env:
+          CAPITAL: ${{ github.event.inputs.initial_capital }}
+          SIMS: ${{ github.event.inputs.num_simulations }}
+          DAYS: ${{ github.event.inputs.horizon_days }}
+          CONFIDENCE: ${{ github.event.inputs.confidence_level }}
+          RF: ${{ github.event.inputs.risk_free_rate }}
+          WEIGHTING: ${{ github.event.inputs.weighting }}
         run: |
           python simulation.py \
-            --capital "${{ github.event.inputs.initial_capital }}" \
-            --sims "${{ github.event.inputs.num_simulations }}" \
-            --days "${{ github.event.inputs.horizon_days }}" \
-            --confidence "${{ github.event.inputs.confidence_level }}" \
-            --weighting "${{ github.event.inputs.weighting }}"
+            --capital "$CAPITAL" \
+            --sims "$SIMS" \
+            --days "$DAYS" \
+            --confidence "$CONFIDENCE" \
+            --rf "$RF" \
+            --weighting "$WEIGHTING"
 
       - name: Commit and push updated chart & cache
         run: |
-          git config --local user.email "github-actions[bot]@://github.com"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add monte_carlo_chart.png fallback_prices.csv
-          git diff --quiet && git diff --staged --quiet || git commit -m "Update Monte Carlo simulation results"
-          git push
-
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Update Monte Carlo simulation results"
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push
+          fi
