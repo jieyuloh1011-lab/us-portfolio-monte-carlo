@@ -88,7 +88,7 @@ def run_monte_carlo(price_df, initial_capital, num_sims, horizon_days):
     mean_returns = log_returns.mean().values
     cov_matrix = log_returns.cov().values
 
-    cov_matrix += np.eye(num_assets) * 1e-8
+    cov_matrix = cov_matrix + np.eye(num_assets) * 1e-8
     L = np.linalg.cholesky(cov_matrix)
 
     drift = mean_returns - 0.5 * np.diag(cov_matrix)
