@@ -1,0 +1,66 @@
+name: Run Monte Carlo Simulation
+
+on:
+  workflow_dispatch:  # Enables the manual "Run workflow" button on GitHub
+    inputs:
+      initial_capital:
+        description: 'Starting Portfolio Capital ($ USD)'
+        required: true
+        default: '100000'
+        type: string
+      num_simulations:
+        description: 'Number of Monte Carlo Simulations'
+        required: true
+        default: '10000'
+        type: string
+      horizon_days:
+        description: 'Simulation Horizon (Trading Days, 252 = 1 Yr)'
+        required: true
+        default: '252'
+        type: string
+      confidence_level:
+        description: 'VaR Confidence Level (e.g., 95 or 99)'
+        required: true
+        default: '95'
+        type: choice
+        options:
+          - '90'
+          - '95'
+          - '99'
+
+permissions:
+  contents: write  # Allows the workflow to save the updated chart/CSV back to main
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Execute Monte Carlo Simulation
+        run: |
+          python simulation.py \
+            --capital "${{ github.event.inputs.initial_capital }}" \
+            --sims "${{ github.event.inputs.num_simulations }}" \
+            --days "${{ github.event.inputs.horizon_days }}" \
+            --confidence "${{ github.event.inputs.confidence_level }}"
+
+      - name: Commit and push updated chart & cache
+        run: |
+          git config --local user.email "github-actions[bot]@://github.com"
+          git config --local user.name "github-actions[bot]"
+          git add monte_carlo_chart.png fallback_prices.csv
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update Monte Carlo simulation results"
+          git push
+
