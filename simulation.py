@@ -221,7 +221,8 @@ def write_github_summary(metrics_map, active_tickers, args):
 
 def plot_results(paths_dict, metrics_map, args):
     keys = list(paths_dict.keys())
-    fig, axes = plt.subplots(2, len(keys), figsize=(8 * len(keys), 10), squeeze=False)
+    fig, axes = plt.subplots(3, len(keys), figsize=(8 * len(keys), 12.5), squeeze=False,
+                             gridspec_kw={'height_ratios': [5, 5, 1.3]})
     x = np.arange(0, args.days + 1)
     tail = 100.0 - args.confidence
 
@@ -256,6 +257,19 @@ def plot_results(paths_dict, metrics_map, args):
         ax2.set_ylabel("Frequency")
         ax2.legend()
         ax2.grid(alpha=0.3)
+
+        # Separate risk panel (outside the plot axes)
+        axp = axes[2, i]
+        axp.axis('off')
+        conf = f"{args.confidence:.0f}%"
+        axp.text(
+            0.5, 0.5,
+            f"{conf} Value at Risk (VaR):  -${m['var_dollar']:,.0f}  ({m['var_pct']:.2f}%)\n"
+            f"{conf} Expected Shortfall (CVaR):  -${m['cvar_dollar']:,.0f}  ({m['cvar_pct']:.2f}%)",
+            ha='center', va='center', fontsize=12, family='monospace', linespacing=1.8,
+            bbox=dict(boxstyle='round,pad=0.8', facecolor='#fdecea', edgecolor='#c0392b', linewidth=1.5),
+            transform=axp.transAxes
+        )
 
     fig.suptitle(f"Monte Carlo: {args.sims:,} sims, {args.days} days, ${args.capital:,.0f} start", fontsize=14)
     fig.tight_layout()
